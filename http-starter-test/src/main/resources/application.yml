@@ -1,0 +1,4 @@
+logging:
+  http:
+    enabled: true
+    level: INFO
