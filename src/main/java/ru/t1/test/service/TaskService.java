@@ -2,10 +2,10 @@ package ru.t1.test.service;
 
 import org.springframework.stereotype.Service;
 import ru.t1.test.dto.TaskDto;
+import ru.t1.test.entity.Task;
 import ru.t1.test.exception.NotFoundException;
 import ru.t1.test.mapper.TaskMapper;
 import ru.t1.test.repository.TaskRepository;
-
 import java.util.List;
 
 @Service
@@ -33,7 +33,13 @@ public class TaskService {
     }
 
     public TaskDto updateTask(int id, TaskDto taskDto) {
+        taskRepository.findById(id).orElseThrow(() -> new NotFoundException("Task not found"));
         return taskMapper.entityToDto(taskRepository.save(taskMapper.dtoToEntity(taskDto)));
     }
 
+    public TaskDto deleteById(int id) {
+        Task taskToDelete = taskRepository.findById(id).orElseThrow(() -> new NotFoundException("Task not found"));
+        taskRepository.deleteById(id);
+        return taskMapper.entityToDto(taskToDelete);
+    }
 }
