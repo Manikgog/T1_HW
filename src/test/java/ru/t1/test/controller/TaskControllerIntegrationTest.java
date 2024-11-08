@@ -11,6 +11,7 @@ import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.jdbc.SqlGroup;
 import ru.t1.test.PostgresSQLTestContainerExtension;
 import ru.t1.test.dto.TaskDto;
+import ru.t1.test.repository.TaskRepository;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,9 +27,11 @@ class TaskControllerIntegrationTest extends PostgresSQLTestContainerExtension {
     @Autowired
     private TestRestTemplate restTemplate;
 
+    @Autowired
+    private TaskRepository taskRepository;
 
     @Test
-    void get() {
+    void getPositiveTest() {
         ResponseEntity<TaskDto> responseEntity = restTemplate.exchange(
                 URL_TEMPLATE,
                 HttpMethod.GET,
@@ -41,7 +44,20 @@ class TaskControllerIntegrationTest extends PostgresSQLTestContainerExtension {
     }
 
     @Test
-    void getAll() {
+    void getNegativeTestById() {
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                String.format("/tasks/%s", WRONG_TASK_ID),
+                HttpMethod.GET,
+                null,
+                String.class);
+
+        assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+        Assertions.assertThat(responseEntity.getBody()).isEqualToIgnoringCase("Task not found");
+    }
+
+
+    @Test
+    void getAllTest() {
         ResponseEntity<List<TaskDto>> responseEntity = restTemplate.exchange(
                 URL_TEMPLATE_TASKS,
                 HttpMethod.GET,
@@ -54,14 +70,175 @@ class TaskControllerIntegrationTest extends PostgresSQLTestContainerExtension {
     }
 
     @Test
-    void create() {
+    void createPositiveTest() {
+        taskRepository.deleteAll();
+        TaskDto taskDto = new TaskDto("test title 100", "test description 100", "running");
+        HttpEntity<TaskDto> requestEntity = new HttpEntity<>(taskDto);
+        ResponseEntity<Integer> responseEntity = restTemplate.exchange(
+                URL_TEMPLATE_TASKS,
+                HttpMethod.POST,
+                requestEntity,
+                Integer.class
+        );
+        Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.CREATED);
+        Assertions.assertThat(responseEntity.getBody()).isEqualTo(1);
     }
 
     @Test
-    void update() {
+    void createNegativeTestByEmptyTitle() {
+        TaskDto taskDto = new TaskDto("", "test description 100", "running");
+        HttpEntity<TaskDto> requestEntity = new HttpEntity<>(taskDto);
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                URL_TEMPLATE_TASKS,
+                HttpMethod.POST,
+                requestEntity,
+                String.class
+        );
+        Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        Assertions.assertThat(responseEntity.getBody()).isEqualToIgnoringCase("Title is empty. ");
+    }
+
+
+    @Test
+    void createNegativeTestByBlankTitle() {
+        TaskDto taskDto = new TaskDto("  ", "test description 100", "running");
+        HttpEntity<TaskDto> requestEntity = new HttpEntity<>(taskDto);
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                URL_TEMPLATE_TASKS,
+                HttpMethod.POST,
+                requestEntity,
+                String.class
+        );
+        Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        Assertions.assertThat(responseEntity.getBody()).isEqualToIgnoringCase("Title is empty. ");
+    }
+
+
+    @Test
+    void createNegativeTestByEmptyDescription() {
+        TaskDto taskDto = new TaskDto("test title 100", "", "running");
+        HttpEntity<TaskDto> requestEntity = new HttpEntity<>(taskDto);
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                URL_TEMPLATE_TASKS,
+                HttpMethod.POST,
+                requestEntity,
+                String.class
+        );
+        Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        Assertions.assertThat(responseEntity.getBody()).isEqualToIgnoringCase("Description is empty. ");
+    }
+
+
+    @Test
+    void createNegativeTestByBlankDescription() {
+        TaskDto taskDto = new TaskDto("test title 100", "  ", "running");
+        HttpEntity<TaskDto> requestEntity = new HttpEntity<>(taskDto);
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                URL_TEMPLATE_TASKS,
+                HttpMethod.POST,
+                requestEntity,
+                String.class
+        );
+        Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        Assertions.assertThat(responseEntity.getBody()).isEqualToIgnoringCase("Description is empty. ");
+    }
+
+
+    @Test
+    void createNegativeTestByWrongStatus() {
+        TaskDto taskDto = new TaskDto("test title 100", "test description 100", "wrong status");
+        HttpEntity<TaskDto> requestEntity = new HttpEntity<>(taskDto);
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                URL_TEMPLATE_TASKS,
+                HttpMethod.POST,
+                requestEntity,
+                String.class
+        );
+        Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        Assertions.assertThat(responseEntity.getBody()).isEqualToIgnoringCase("Status is incorrect.");
+    }
+
+
+    @Test
+    void createNegativeTestByBlankStatus() {
+        TaskDto taskDto = new TaskDto("test title 100", "test description 100", "  ");
+        HttpEntity<TaskDto> requestEntity = new HttpEntity<>(taskDto);
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                URL_TEMPLATE_TASKS,
+                HttpMethod.POST,
+                requestEntity,
+                String.class
+        );
+        Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        Assertions.assertThat(responseEntity.getBody()).isEqualToIgnoringCase("Status is empty. Status is incorrect.");
+    }
+
+
+    @Test
+    void createNegativeTestByEmptyStatus() {
+        TaskDto taskDto = new TaskDto("test title 100", "test description 100", "");
+        HttpEntity<TaskDto> requestEntity = new HttpEntity<>(taskDto);
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                URL_TEMPLATE_TASKS,
+                HttpMethod.POST,
+                requestEntity,
+                String.class
+        );
+        Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        Assertions.assertThat(responseEntity.getBody()).isEqualToIgnoringCase("Status is empty. Status is incorrect.");
+    }
+
+
+    @Test
+    void updatePositiveTest() {
+        HttpEntity<TaskDto> requestEntity = new HttpEntity<>(TASK_DTO_1_COMPLETED);
+        ResponseEntity<TaskDto> responseEntity = restTemplate.exchange(
+                String.format("/tasks/%s", TASK_ID),
+                HttpMethod.PUT,
+                requestEntity,
+                TaskDto.class
+        );
+        Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
+        assertEquals(MediaType.APPLICATION_JSON, responseEntity.getHeaders().getContentType());
+        assertEquals(TASK_DTO_1_COMPLETED, responseEntity.getBody());
     }
 
     @Test
-    void delete() {
+    void updateNegativeTestById() {
+        HttpEntity<TaskDto> requestEntity = new HttpEntity<>(TASK_DTO_1_COMPLETED);
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                String.format("/tasks/%s", WRONG_TASK_ID),
+                HttpMethod.PUT,
+                requestEntity,
+                String.class
+        );
+        assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+        Assertions.assertThat(responseEntity.getBody()).isEqualToIgnoringCase("Task not found");
+    }
+
+    @Test
+    void deletePositiveTest() {
+        ResponseEntity<TaskDto> responseEntity = restTemplate.exchange(
+                URL_TEMPLATE,
+                HttpMethod.DELETE,
+                null,
+                TaskDto.class);
+
+        assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
+        assertEquals(MediaType.APPLICATION_JSON, responseEntity.getHeaders().getContentType());
+        assertEquals(TASK_DTO_1, responseEntity.getBody());
+    }
+
+
+    @Test
+    void deleteNegativeTest() {
+        ResponseEntity<String> responseEntity = restTemplate.exchange(
+                String.format("/tasks/%s", WRONG_TASK_ID),
+                HttpMethod.DELETE,
+                null,
+                String.class);
+
+        assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
+        Assertions.assertThat(responseEntity.getBody()).isEqualToIgnoringCase("Task not found");
     }
 }

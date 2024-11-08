@@ -15,6 +15,8 @@ public class TestData {
     public static String URL_TEMPLATE = String.format("/tasks/%s", TASK_ID);
     public static String URL_TEMPLATE_TASKS = "/tasks";
     public static TaskDto TASK_DTO_1 = new TaskDto("test title 1", "test description 1", "running");
+    public static TaskDto TASK_DTO_1_COMPLETED = new TaskDto("test title 1", "test description 1", "completed");
+
     public static List<TaskDto> TASK_DTO_LIST = List.of(new TaskDto("test title 1", "test description 1", "running"),
             new TaskDto("test title 2", "test description 2", "running"),
             new TaskDto("test title 3", "test description 3", "completed"),
