@@ -1,19 +1,22 @@
 services:
 
-  additionalinfo-db:
+  db:
     image: postgres:14.0
 #    build: postgres:14.0
     restart: always
     container_name: task-db
     ports:
-      - "5435:5432"
+      - "${POSTGRES_PORT}:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
-      - ./task-database-volume:/var/lib/postgresql/data
+      - task-database-volume:/var/lib/postgresql/data
     healthcheck:
       test: [ "CMD", "pg_isready", "-U", "javaguru" ]
       interval: 10s
       retries: 3
+
+volumes:
+  task-database-volume:

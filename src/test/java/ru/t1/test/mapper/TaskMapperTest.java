@@ -3,7 +3,6 @@ package ru.t1.test.mapper;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
 import org.mapstruct.factory.Mappers;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import ru.t1.test.TaskStatus;
 import ru.t1.test.dto.TaskDto;
 import ru.t1.test.entity.Task;
@@ -13,8 +12,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class TaskMapperTest {
 
-    @MockBean
-    private TaskMapper taskMapper = Mappers.getMapper(TaskMapper.class);
+    private final TaskMapper taskMapper = Mappers.getMapper(TaskMapper.class);
 
     @Test
     void dtoToEntityPositiveTest() {

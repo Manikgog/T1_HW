@@ -1,4 +1,4 @@
-package ru.t1.test;
+package ru.t1.test.controller;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
