@@ -1,0 +1,22 @@
+server:
+  port: 8081
+
+spring:
+  servlet:
+    multipart:
+      file-size-threshold: 2048
+      max-file-size: 5MB
+  datasource:
+    url: ${DATABASE_URL}
+    username: ${DATABASE_USERNAME}
+    password: ${DATABASE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: update
+    open-in-view: true
+    properties:
+      jakarta:
+        persistence:
+          sharedCache:
+            mode: UNSPECIFIED
