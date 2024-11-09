@@ -10,9 +10,12 @@ import org.springframework.http.*;
 import org.springframework.test.context.jdbc.Sql;
 import org.springframework.test.context.jdbc.SqlGroup;
 import ru.t1.test.PostgresSQLTestContainerExtension;
+import ru.t1.test.TaskStatus;
 import ru.t1.test.dto.TaskDto;
+import ru.t1.test.entity.Task;
 import ru.t1.test.repository.TaskRepository;
 import java.util.List;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static ru.t1.test.util.TestData.*;
@@ -81,7 +84,13 @@ class TaskControllerIntegrationTest extends PostgresSQLTestContainerExtension {
                 Integer.class
         );
         Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.CREATED);
-        Assertions.assertThat(responseEntity.getBody()).isEqualTo(1);
+        Assertions.assertThat(responseEntity.getBody()).isEqualTo(TASK_ID);
+
+        Optional<Task> task = taskRepository.findById(TASK_ID);
+        Assertions.assertThat(task.isPresent()).isTrue();
+        Assertions.assertThat(task.get().getTitle()).isEqualTo("test title 100");
+        Assertions.assertThat(task.get().getDescription()).isEqualTo("test description 100");
+        Assertions.assertThat(task.get().getStatus()).isEqualTo(TaskStatus.RUNNING);
     }
 
     @Test
@@ -201,6 +210,11 @@ class TaskControllerIntegrationTest extends PostgresSQLTestContainerExtension {
         Assertions.assertThat(responseEntity.getStatusCode()).isEqualTo(HttpStatus.OK);
         assertEquals(MediaType.APPLICATION_JSON, responseEntity.getHeaders().getContentType());
         assertEquals(TASK_DTO_1_COMPLETED, responseEntity.getBody());
+        Optional<Task> task = taskRepository.findById(TASK_ID);
+        Assertions.assertThat(task.isPresent()).isTrue();
+        Assertions.assertThat(task.get().getTitle()).isEqualTo(TASK_DTO_1_COMPLETED.title());
+        Assertions.assertThat(task.get().getDescription()).isEqualTo(TASK_DTO_1_COMPLETED.description());
+        Assertions.assertThat(task.get().getStatus()).isEqualTo(TaskStatus.COMPLETED);
     }
 
     @Test
@@ -227,6 +241,8 @@ class TaskControllerIntegrationTest extends PostgresSQLTestContainerExtension {
         assertEquals(HttpStatus.OK, responseEntity.getStatusCode());
         assertEquals(MediaType.APPLICATION_JSON, responseEntity.getHeaders().getContentType());
         assertEquals(TASK_DTO_1, responseEntity.getBody());
+        Optional<Task> deletedTask = taskRepository.findById(TASK_ID);
+        Assertions.assertThat(deletedTask.isPresent()).isFalse();
     }
 
 
@@ -240,5 +256,7 @@ class TaskControllerIntegrationTest extends PostgresSQLTestContainerExtension {
 
         assertEquals(HttpStatus.BAD_REQUEST, responseEntity.getStatusCode());
         Assertions.assertThat(responseEntity.getBody()).isEqualToIgnoringCase("Task not found");
+        Optional<Task> deletedTask = taskRepository.findById(WRONG_TASK_ID);
+        Assertions.assertThat(deletedTask.isPresent()).isFalse();
     }
 }
