@@ -15,8 +15,9 @@ spring:
     hibernate:
       ddl-auto: update
     open-in-view: true
-  properties:
-   jakarta:
-     persistence:
-       sharedCache:
-         mode: UNSPECIFIED
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    properties:
+      jakarta:
+        persistence:
+          sharedCache:
+            mode: UNSPECIFIED
