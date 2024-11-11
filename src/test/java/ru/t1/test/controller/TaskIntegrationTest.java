@@ -15,9 +15,9 @@ import ru.t1.test.TaskStatus;
 import ru.t1.test.dto.TaskDto;
 import ru.t1.test.entity.Task;
 import ru.t1.test.repository.TaskRepository;
-
 import java.util.List;
 import java.util.Optional;
+import java.util.Random;
 
 import static org.hamcrest.Matchers.is;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -26,11 +26,7 @@ import static ru.t1.test.util.TestData.*;
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @AutoConfigureMockMvc
-/*@SqlGroup({
-        @Sql(scripts = "classpath:testdata/add_task_test_data.sql", executionPhase = Sql.ExecutionPhase.BEFORE_TEST_METHOD),
-        @Sql(scripts = "classpath:testdata/clear_task_data.sql", executionPhase = Sql.ExecutionPhase.AFTER_TEST_METHOD),
-})*/
-public class TaskIntegrationTest extends PostgresSQLTestContainerExtension {
+class TaskIntegrationTest extends PostgresSQLTestContainerExtension {
 
     @Autowired
     private MockMvc mockMvc;
@@ -50,12 +46,14 @@ public class TaskIntegrationTest extends PostgresSQLTestContainerExtension {
 
     @Test
     void getPositiveTest() throws Exception {
-        mockMvc.perform(get(URL_TEMPLATE))
+        int id = getRandomId();
+        Task expectedTask = taskRepository.findById(id).get();
+        mockMvc.perform(get("/tasks/" + id))
                 .andExpect(status().isOk())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.title", is(TASK_1.getTitle())))
-                .andExpect(jsonPath("$.description", is(TASK_1.getDescription())))
-                .andExpect(jsonPath("$.status", is(TaskStatus.RUNNING.toString())));
+                .andExpect(jsonPath("$.title", is(expectedTask.getTitle())))
+                .andExpect(jsonPath("$.description", is(expectedTask.getDescription())))
+                .andExpect(jsonPath("$.status", is(expectedTask.getStatus().name().toLowerCase())));
     }
 
     @Test
@@ -66,7 +64,6 @@ public class TaskIntegrationTest extends PostgresSQLTestContainerExtension {
 
     @Test
     void postPositiveTest() throws Exception {
-        taskRepository.deleteAll();
         TaskDto taskDto = TASK_DTO_5;
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("title", taskDto.title());
@@ -78,14 +75,15 @@ public class TaskIntegrationTest extends PostgresSQLTestContainerExtension {
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isCreated())
-                .andExpect(content().string(String.valueOf(TASK_ID)));
+                .andExpect(content().string(String.valueOf(getMaxId())));
 
-        Optional<Task> task = taskRepository.findById(TASK_ID);
+        Optional<Task> task = taskRepository.findById(getMaxId());
         Assertions.assertThat(task.isPresent()).isTrue();
         Assertions.assertThat(task.get().getTitle()).isEqualTo(TASK_DTO_5.title());
         Assertions.assertThat(task.get().getDescription()).isEqualTo(TASK_DTO_5.description());
         Assertions.assertThat(task.get().getStatus()).isEqualTo(TaskStatus.RUNNING);
     }
+
 
     @Test
     void postNegativeTestByEmptyTitle() throws Exception {
@@ -202,174 +200,184 @@ public class TaskIntegrationTest extends PostgresSQLTestContainerExtension {
 
     @Test
     void updatePositiveTest() throws Exception {
-        TaskDto taskDto = TASK_DTO_1_COMPLETED;
+        int id = getRandomId();
+        TaskDto taskDto = TASK_DTO_COMPLETED;
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("title", taskDto.title());
         jsonObject.put("description", taskDto.description());
         jsonObject.put("status", taskDto.status());
 
-        mockMvc.perform(put(URL_TEMPLATE)
+        mockMvc.perform(put("/tasks/" + id)
                         .content(jsonObject.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.title", is(TASK_1.getTitle())))
-                .andExpect(jsonPath("$.description", is(TASK_1.getDescription())))
+                .andExpect(jsonPath("$.title", is(taskRepository.findById(id).get().getTitle())))
+                .andExpect(jsonPath("$.description", is(taskRepository.findById(id).get().getDescription())))
                 .andExpect(jsonPath("$.status", is(TaskStatus.COMPLETED.toString())));
-
-        Optional<Task> task = taskRepository.findById(TASK_ID);
-        Assertions.assertThat(task.isPresent()).isTrue();
-        Assertions.assertThat(task.get().getTitle()).isEqualTo(TASK_DTO_1_COMPLETED.title());
-        Assertions.assertThat(task.get().getDescription()).isEqualTo(TASK_DTO_1_COMPLETED.description());
-        Assertions.assertThat(task.get().getStatus()).isEqualTo(TaskStatus.COMPLETED);
     }
+
 
     @Test
     void updateNegativeTestByEmptyTitle() throws Exception {
-        TaskDto taskDto = TASK_DTO_1_COMPLETED;
+        int id = getRandomId();
+        Task taskBefore = taskRepository.findById(id).get();
+        TaskDto taskDto = TASK_DTO_COMPLETED;
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("title", "");
         jsonObject.put("description", taskDto.description());
         jsonObject.put("status", taskDto.status());
 
-        mockMvc.perform(put(URL_TEMPLATE)
+        mockMvc.perform(put("/tasks/" + id)
                         .content(jsonObject.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
-        Optional<Task> task = taskRepository.findById(TASK_ID);
-        Assertions.assertThat(task.isPresent()).isTrue();
-        Assertions.assertThat(task.get().getTitle()).isEqualTo(TASK_DTO_1.title());
-        Assertions.assertThat(task.get().getDescription()).isEqualTo(TASK_DTO_1.description());
-        Assertions.assertThat(task.get().getStatus()).isEqualTo(TaskStatus.RUNNING);
+        Optional<Task> taskAfter = taskRepository.findById(id);
+        Assertions.assertThat(taskAfter.isPresent()).isTrue();
+        Assertions.assertThat(taskAfter.get().getTitle()).isEqualTo(taskBefore.getTitle());
+        Assertions.assertThat(taskAfter.get().getDescription()).isEqualTo(taskBefore.getDescription());
+        Assertions.assertThat(taskAfter.get().getStatus()).isEqualTo(taskBefore.getStatus());
     }
 
     @Test
     void updateNegativeTestByBlankTitle() throws Exception {
-        TaskDto taskDto = TASK_DTO_1_COMPLETED;
+        int id = getRandomId();
+        Task taskBefore = taskRepository.findById(id).get();
+        TaskDto taskDto = TASK_DTO_COMPLETED;
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("title", "  ");
         jsonObject.put("description", taskDto.description());
         jsonObject.put("status", taskDto.status());
 
-        mockMvc.perform(put(URL_TEMPLATE)
+        mockMvc.perform(put("/tasks/" + id)
                         .content(jsonObject.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
-        Optional<Task> task = taskRepository.findById(TASK_ID);
-        Assertions.assertThat(task.isPresent()).isTrue();
-        Assertions.assertThat(task.get().getTitle()).isEqualTo(TASK_DTO_1.title());
-        Assertions.assertThat(task.get().getDescription()).isEqualTo(TASK_DTO_1.description());
-        Assertions.assertThat(task.get().getStatus()).isEqualTo(TaskStatus.RUNNING);
+        Optional<Task> taskAfter = taskRepository.findById(id);
+        Assertions.assertThat(taskAfter.isPresent()).isTrue();
+        Assertions.assertThat(taskAfter.get().getTitle()).isEqualTo(taskBefore.getTitle());
+        Assertions.assertThat(taskAfter.get().getDescription()).isEqualTo(taskBefore.getDescription());
+        Assertions.assertThat(taskAfter.get().getStatus()).isEqualTo(taskBefore.getStatus());
     }
 
     @Test
     void updateNegativeTestByEmptyDescription() throws Exception {
-        TaskDto taskDto = TASK_DTO_1_COMPLETED;
+        int id = getRandomId();
+        Task taskBefore = taskRepository.findById(id).get();
+        TaskDto taskDto = TASK_DTO_COMPLETED;
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("title", taskDto.title());
         jsonObject.put("description", "");
         jsonObject.put("status", taskDto.status());
 
-        mockMvc.perform(put(URL_TEMPLATE)
+        mockMvc.perform(put("/tasks/" + id)
                         .content(jsonObject.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
-        Optional<Task> task = taskRepository.findById(TASK_ID);
-        Assertions.assertThat(task.isPresent()).isTrue();
-        Assertions.assertThat(task.get().getTitle()).isEqualTo(TASK_DTO_1.title());
-        Assertions.assertThat(task.get().getDescription()).isEqualTo(TASK_DTO_1.description());
-        Assertions.assertThat(task.get().getStatus()).isEqualTo(TaskStatus.RUNNING);
+        Optional<Task> taskAfter = taskRepository.findById(id);
+        Assertions.assertThat(taskAfter.isPresent()).isTrue();
+        Assertions.assertThat(taskAfter.get().getTitle()).isEqualTo(taskBefore.getTitle());
+        Assertions.assertThat(taskAfter.get().getDescription()).isEqualTo(taskBefore.getDescription());
+        Assertions.assertThat(taskAfter.get().getStatus()).isEqualTo(taskBefore.getStatus());
     }
 
     @Test
     void updateNegativeTestByBlankDescription() throws Exception {
-        TaskDto taskDto = TASK_DTO_1_COMPLETED;
+        int id = getRandomId();
+        Task taskBefore = taskRepository.findById(id).get();
+        TaskDto taskDto = TASK_DTO_COMPLETED;
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("title", taskDto.title());
         jsonObject.put("description", "  ");
         jsonObject.put("status", taskDto.status());
 
-        mockMvc.perform(put(URL_TEMPLATE)
+        mockMvc.perform(put("/tasks/" + id)
                         .content(jsonObject.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
-        Optional<Task> task = taskRepository.findById(TASK_ID);
-        Assertions.assertThat(task.isPresent()).isTrue();
-        Assertions.assertThat(task.get().getTitle()).isEqualTo(TASK_DTO_1.title());
-        Assertions.assertThat(task.get().getDescription()).isEqualTo(TASK_DTO_1.description());
-        Assertions.assertThat(task.get().getStatus()).isEqualTo(TaskStatus.RUNNING);
+        Optional<Task> taskAfter = taskRepository.findById(id);
+        Assertions.assertThat(taskAfter.isPresent()).isTrue();
+        Assertions.assertThat(taskAfter.get().getTitle()).isEqualTo(taskBefore.getTitle());
+        Assertions.assertThat(taskAfter.get().getDescription()).isEqualTo(taskBefore.getDescription());
+        Assertions.assertThat(taskAfter.get().getStatus()).isEqualTo(taskBefore.getStatus());
     }
 
     @Test
     void updateNegativeTestByEmptyStatus() throws Exception {
-        TaskDto taskDto = TASK_DTO_1_COMPLETED;
+        int id = getRandomId();
+        Task taskBefore = taskRepository.findById(id).get();
+        TaskDto taskDto = TASK_DTO_COMPLETED;
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("title", taskDto.title());
         jsonObject.put("description", taskDto.description());
         jsonObject.put("status", "");
 
-        mockMvc.perform(put(URL_TEMPLATE)
+        mockMvc.perform(put("/tasks/" + id)
                         .content(jsonObject.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
-        Optional<Task> task = taskRepository.findById(TASK_ID);
-        Assertions.assertThat(task.isPresent()).isTrue();
-        Assertions.assertThat(task.get().getTitle()).isEqualTo(TASK_DTO_1.title());
-        Assertions.assertThat(task.get().getDescription()).isEqualTo(TASK_DTO_1.description());
-        Assertions.assertThat(task.get().getStatus()).isEqualTo(TaskStatus.RUNNING);
+        Optional<Task> taskAfter = taskRepository.findById(id);
+        Assertions.assertThat(taskAfter.isPresent()).isTrue();
+        Assertions.assertThat(taskAfter.get().getTitle()).isEqualTo(taskBefore.getTitle());
+        Assertions.assertThat(taskAfter.get().getDescription()).isEqualTo(taskBefore.getDescription());
+        Assertions.assertThat(taskAfter.get().getStatus()).isEqualTo(taskBefore.getStatus());
     }
 
     @Test
     void updateNegativeTestByBlankStatus() throws Exception {
-        TaskDto taskDto = TASK_DTO_1_COMPLETED;
+        int id = getRandomId();
+        Task taskBefore = taskRepository.findById(id).get();
+        TaskDto taskDto = TASK_DTO_COMPLETED;
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("title", taskDto.title());
         jsonObject.put("description", taskDto.description());
         jsonObject.put("status", "  ");
 
-        mockMvc.perform(put(URL_TEMPLATE)
+        mockMvc.perform(put("/tasks/" + id)
                         .content(jsonObject.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
-        Optional<Task> task = taskRepository.findById(TASK_ID);
-        Assertions.assertThat(task.isPresent()).isTrue();
-        Assertions.assertThat(task.get().getTitle()).isEqualTo(TASK_DTO_1.title());
-        Assertions.assertThat(task.get().getDescription()).isEqualTo(TASK_DTO_1.description());
-        Assertions.assertThat(task.get().getStatus()).isEqualTo(TaskStatus.RUNNING);
+        Optional<Task> taskAfter = taskRepository.findById(id);
+        Assertions.assertThat(taskAfter.isPresent()).isTrue();
+        Assertions.assertThat(taskAfter.get().getTitle()).isEqualTo(taskBefore.getTitle());
+        Assertions.assertThat(taskAfter.get().getDescription()).isEqualTo(taskBefore.getDescription());
+        Assertions.assertThat(taskAfter.get().getStatus()).isEqualTo(taskBefore.getStatus());
     }
 
     @Test
     void updateNegativeTestByWrongStatus() throws Exception {
-        TaskDto taskDto = TASK_DTO_1_COMPLETED;
+        int id = getRandomId();
+        Task taskBefore = taskRepository.findById(id).get();
+        TaskDto taskDto = TASK_DTO_COMPLETED;
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("title", taskDto.title());
         jsonObject.put("description", taskDto.description());
         jsonObject.put("status", "wrong status");
 
-        mockMvc.perform(put(URL_TEMPLATE)
+        mockMvc.perform(put("/tasks/" + id)
                         .content(jsonObject.toString())
                         .contentType(MediaType.APPLICATION_JSON)
                         .accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isBadRequest());
 
-        Optional<Task> task = taskRepository.findById(TASK_ID);
-        Assertions.assertThat(task.isPresent()).isTrue();
-        Assertions.assertThat(task.get().getTitle()).isEqualTo(TASK_DTO_1.title());
-        Assertions.assertThat(task.get().getDescription()).isEqualTo(TASK_DTO_1.description());
-        Assertions.assertThat(task.get().getStatus()).isEqualTo(TaskStatus.RUNNING);
+        Optional<Task> taskAfter = taskRepository.findById(id);
+        Assertions.assertThat(taskAfter.isPresent()).isTrue();
+        Assertions.assertThat(taskAfter.get().getTitle()).isEqualTo(taskBefore.getTitle());
+        Assertions.assertThat(taskAfter.get().getDescription()).isEqualTo(taskBefore.getDescription());
+        Assertions.assertThat(taskAfter.get().getStatus()).isEqualTo(taskBefore.getStatus());
     }
 
     @Test
@@ -388,14 +396,16 @@ public class TaskIntegrationTest extends PostgresSQLTestContainerExtension {
 
     @Test
     void deletePositiveTest() throws Exception {
-        mockMvc.perform(delete(URL_TEMPLATE))
+        int id = getRandomId();
+        Task taskBefore = taskRepository.findById(id).get();
+        mockMvc.perform(delete("/tasks/" + id))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_JSON))
-                .andExpect(jsonPath("$.title", is(TASK_1.getTitle())))
-                .andExpect(jsonPath("$.description", is(TASK_1.getDescription())))
-                .andExpect(jsonPath("$.status", is(TaskStatus.RUNNING.toString())));
+                .andExpect(jsonPath("$.title", is(taskBefore.getTitle())))
+                .andExpect(jsonPath("$.description", is(taskBefore.getDescription())))
+                .andExpect(jsonPath("$.status", is(taskBefore.getStatus().name().toLowerCase())));
 
-        Optional<Task> task = taskRepository.findById(TASK_ID);
+        Optional<Task> task = taskRepository.findById(id);
         Assertions.assertThat(task.isEmpty()).isTrue();
     }
 
@@ -403,6 +413,20 @@ public class TaskIntegrationTest extends PostgresSQLTestContainerExtension {
     void deleteNegativeTest() throws Exception {
         mockMvc.perform(delete(String.format("/tasks/%s", WRONG_TASK_ID)))
                 .andExpect(status().isBadRequest());
+    }
+
+    private int getMaxId(){
+        List<Task> tasks = taskRepository.findAll();
+        return tasks.stream().mapToInt(t -> t.getId()).max().getAsInt();
+    }
+
+
+    private int getRandomId() {
+        List<Task> tasks = taskRepository.findAll();
+        Random rnd = new Random();
+        int index = rnd.nextInt(tasks.size());
+        int id = tasks.get(index).getId();
+        return id;
     }
 
 }

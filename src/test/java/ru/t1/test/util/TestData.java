@@ -8,7 +8,6 @@ import java.util.List;
 
 public class TestData {
     public static int TASK_ID = 1;
-    public static int NEW_TASK_ID = 5;
     public static int WRONG_TASK_ID = -1;
     public static String TITLE = "test title";
     public static String DESCRIPTION = "test description";
@@ -22,6 +21,8 @@ public class TestData {
     public static TaskDto TASK_DTO_4 = new TaskDto("test title 4", "test description 4", "completed");
     public static TaskDto TASK_DTO_5 = new TaskDto("test title 5", "test description 5", "running");
     public static TaskDto TASK_DTO_1_COMPLETED = new TaskDto("test title 1", "test description 1", "completed");
+    public static TaskDto TASK_DTO_COMPLETED = new TaskDto("test title 1", "test description 1", "completed");
+
     public static Task TASK_1 = new Task("test title 1", "test description 1", TaskStatus.RUNNING);
     public static Task TASK_2 = new Task("test title 2", "test description 2", TaskStatus.RUNNING);
     public static Task TASK_3 = new Task("test title 3", "test description 3", TaskStatus.RUNNING);

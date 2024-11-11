@@ -9,6 +9,7 @@ import ru.t1.test.entity.Task;
 import ru.t1.test.exception.IllegalStatusException;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static ru.t1.test.util.TestData.TASK_ID;
 
 class TaskMapperTest {
 
@@ -33,7 +34,7 @@ class TaskMapperTest {
     @Test
     void entityToDtoPositiveTest() {
         Task task = new Task("title test", "description test", TaskStatus.RUNNING);
-        task.setId(1);
+        task.setId(TASK_ID);
         TaskDto taskDto = taskMapper.entityToDto(task);
         assertEquals(task.getTitle(), taskDto.title());
         assertEquals(task.getDescription(), taskDto.description());
@@ -45,6 +46,14 @@ class TaskMapperTest {
         String taskStatusString = "running";
         TaskStatus taskStatus = taskMapper.stringToTaskStatus(taskStatusString);
         Assertions.assertEquals(taskStatusString, taskStatus.getStatus());
+    }
+
+
+    @Test
+    void stringToTaskStatusNegativeTest() {
+        String taskStatusString = "runnin";
+        IllegalStatusException exception = Assertions.assertThrows(IllegalStatusException.class, () -> taskMapper.stringToTaskStatus(taskStatusString));
+        Assertions.assertEquals("Unknown status: " + taskStatusString, exception.getMessage());
     }
 
     @Test
