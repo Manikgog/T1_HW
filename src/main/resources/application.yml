@@ -20,3 +20,6 @@ spring:
         persistence:
           sharedCache:
             mode: UNSPECIFIED
+
+name:
+  string: Max
